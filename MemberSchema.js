@@ -1,15 +1,21 @@
 var mongoose = require('mongoose');
 
 
-var UserSchema = new mongoose.Schema({
+var MemberSchema = new mongoose.Schema({
      userId : {type: String , required:true, unique:true},
      userPwd :  {type: String , required:true},
-     userName: String,
-     age: Number,
-     regDate: Date,
-     updateDate: Date
+     userName: {type: String, index:'hashed'},
+     age: {type: Number,'default':-1},
+     regDate: {type: Date, index:{unique:false},'default':Date.now},
+     updateDate: {type: Date, index:{unique:false},'default':Date.now}
 });
-
-mongoose.model('User', UserSchema);
+//스키마에 static 메소드 추가
+MemberSchema.static('findById', function(userId, callback){
+    return this.find({userId:userId}, callback);
+});
+//모든 문서 데이터 반환
+MemberSchema.static('findAll', function(callback){
+    return this.find({}, callback);
+});
 
 
