@@ -139,8 +139,8 @@ router.route('/process/addMember').post(function(req, res){
         res.write('<h2>데이터베이스 연결 실패</h2>');
         res.end();
     }
-    
 });
+
 
 app.use('/', router);
 // 사용자를 추가하는 함수

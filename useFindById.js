@@ -84,9 +84,44 @@ function connectDB(){
         setInterval(connectDB, 5000);
     });
 }
-       
-
 var router = express.Router();
+//사용자 추가 라우팅 함수 
+router.route('/process/addMember').post(function(req,res){
+    console.log('/process/addMember 호출됨');
+    
+    var userId = req.body.userId || req.query.userId;
+    var userPwd = req.body.userPwd || req.query.userPwd;
+    var userName = req.body.userName || req.query.userName;
+    var age = req.body.age || req.query.age;
+    
+    console.log('요청 파라미터 : ' + userId + ', ' + userPwd + ', ' + userName +',' + age);
+    
+    // 데이터베이스 객체가 초기화된 경우, addUser 함수 호출하여 사용자 추가
+    if (database){
+        addMember(database, userId, userPwd, userName, age,function(err, addedUser){
+            if(err) {throw err;}
+            
+            //결과 객체 확인하여 추가된 데이터 있으면 성공 응답 전송
+            if(addedUser){
+                console.dir(addedUser);
+                
+                res.writeHead('200', {'Content-Type':'text/html;charset=utf8'});
+                res.write('<h2>사용자 추가 성공</h2>');
+                res.end();
+            }else{
+                res.writeHead('200', {'Content-Type':'text/html;charset=utf8'});
+                res.write('<h2>사용자 추가 실패</h2>');
+                res.end();
+            }
+        });
+    }else{
+        // 데이터베이스 객체가 초기화되지 않는 경우 실패응답 전송
+        res.writeHead('200', {'Content-Type':'text/html;charset=utf8'});
+        res.write('<h2>데이터베이스 연결 실패</h2>');
+        res.end();
+    }
+});
+
 //로그인 라우팅 함수-데이터베이스의 정보와 비교
 router.route('/process/login').post(function (req, res) {
     console.log('process/login 호출됨');
@@ -124,10 +159,84 @@ router.route('/process/login').post(function (req, res) {
     }
     
 });
-
+//회원 리스트 조회
+router.route('/process/listMember').post(function(req, res){
+    console.log('/process/listMember 호출됨');
+    
+    // db 연결되면 
+    if(database){
+        MemberModel.findAll(function(err, results){
+            if(err){
+                console.log('사용자 리스트 조회중 에러 발생 : '+err.stack);
+                
+                res.writeHead('200', {'Content-Type':'text/html;charset=utf8'});
+                res.write('<h1> 사용자 리스트 조회중 오류 발생 </h1>');
+                res.write('<p>' + err.stack + '</p');
+                res.end();
+                return;
+            }
+            
+            if(results.length>0){ //결과 객체 있으면 리스트 전송 
+                console.dir(results);
+                
+                res.writeHead('200', {'Content-Type':'text/html;charset=utf8'});
+                res.write('<h2> 사용자 리스트 </h2>');
+                res.write('<div><ul>');
+                
+                for(var i = 0; i< results.length; i++){
+                    var curUserId = results[i]._doc.userId;
+                    var curUserPwd = results[i]._doc.userPwd;
+                    var curUserName = results[i]._doc.userName;
+                    var curUserAge = results[i]._doc.age;
+                    var curregDate = results[i]._doc.regDate;
+                    var curupdateDate = results[i]._doc.updateDate;
+                    res.write('<li>#' + i 
+                                +'<br>아이디 : ' + curUserId + ', '
+                                +'<br>비밀번호 : ' + curUserPwd + ', ' 
+                                +'<br>이름 : ' + curUserName + ', ' 
+                                +'<br>나이 : ' + curUserAge + ',' 
+                                +'<br>등록일자 : ' + curregDate +',' 
+                                +'<br>수정일자 : ' + curupdateDate + '</li><br>');
+                }
+                
+                res.write('</ul></div>');
+                res.end();
+            
+            }else{//결과 객체 없으면 실패 응답 전송   
+                res.writeHead('200', {'Content-Type':'text/html;charset=utf8'});
+                res.write('<h2> 사용자 리스트 조회 실패</h2>');
+                res.end();
+            }
+        });
+    }else{
+        console.log('db 연결 오류 ');
+        res.writeHead('200', {'Content-Type':'text/html;charset=utf8'});
+        res.write('<h1> DB 연결 실패</h1>');
+        res.end();
+    }
+});
 
 
 app.use('/', router);
+// 사용자를 추가하는 함수
+var addMember = function(database, userId, userPwd, userName,age, callback){
+    console.log('addMember 호출됨 : ' + userId + ', ' + userPwd + ', '+userName+ ',' + age);
+    
+    //UserModel 의 인스턴스 객체 생성
+    var user = new MemberModel({"userId":userId, "userPwd":userPwd, "userName":userName,"age":age});
+    
+    // save()로 저장 : 저장 성공시 addedUser 객체가 파라미터로 전달됨
+    user.save(function(err,addedUser){
+        console.log("addedUser%j",addedUser);
+        if(err){
+            callback(err,null);
+            return;
+        }
+        console.log('사용자 데이터 추가함.');
+        callback(null,addedUser);
+    });
+    
+}
 // 사용자를 인증하는 함수
 var authMember = function(database, userId, userPwd, callback){
     console.log('authMember 호출됨 : ' + userId + ', ' + userPwd );
